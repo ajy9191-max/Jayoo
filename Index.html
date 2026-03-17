@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자유전공계열 역량 성장 결과</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { font-size: 24px; text-align: center; color: #333; }
+        .program-list { margin-bottom: 20px; }
+        .program-item { margin-bottom: 10px; font-size: 16px; }
+        button { width: 100%; padding: 10px; font-size: 16px; background-color: #0056b3; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #004494; }
+        .chart-container { margin-top: 30px; position: relative; height: 300px; width: 100%; }
+        #result-text { text-align: center; margin-top: 15px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>1학기 참여 프로그램 선택</h1>
+    <p style="text-align: center; color: #666;">본인이 참여한 프로그램을 모두 선택해 주세요.</p>
+    
+    <div class="program-list" id="checkboxes">
+        <div class="program-item"><input type="checkbox" id="progA" value="A"> <label for="progA">집단학사지도</label></div>
+        <div class="program-item"><input type="checkbox" id="progB" value="B"> <label for="progB">글로벌버디</label></div>
+        <div class="program-item"><input type="checkbox" id="progC" value="C"> <label for="progC">전공탐색유니버스</label></div>
+        <div class="program-item"><input type="checkbox" id="progD" value="D"> <label for="progD">어깨동무</label></div>
+        <div class="program-item"><input type="checkbox" id="progE" value="E"> <label for="progE">LC피어리더 워크숍</label></div>
+        <div class="program-item"><input type="checkbox" id="progF" value="F"> <label for="progF">성균인성교육센터 인성함양실천 프로그램</label></div>
+    </div>
+
+    <button onclick="calculateAndDraw()">내 역량 파이차트 보기</button>
+
+    <div id="result-text"></div>
+    <div class="chart-container">
+        <canvas id="myPieChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // DataLabels 플러그인 등록 (차트 위에 글씨 띄우기 위해 필수)
+    Chart.register(ChartDataLabels);
+
+    // 1. 각 프로그램별 역량 점수 데이터
+    const programData = {
+        'A': { '자기주도': 7, '탈경계': 3, '공동체지향': 0 },
+        'B': { '자기주도': 2, '탈경계': 4, '공동체지향': 4 },
+        'C': { '자기주도': 0, '탈경계': 7, '공동체지향': 3 },
+        'D': { '자기주도': 5, '탈경계': 0, '공동체지향': 5 },
+        'E': { '자기주도': 3, '탈경계': 3, '공동체지향': 4 },
+        'F': { '자기주도': 0, '탈경계': 5, '공동체지향': 5 }
+    };
+
+    let myChart = null;
+
+    function calculateAndDraw() {
+        let totalSelf = 0;
+        let totalBound = 0;
+        let totalComm = 0;
+
+        const checkboxes = document.querySelectorAll('#checkboxes input[type="checkbox"]');
+        let selectedCount = 0;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                const prog = cb.value;
+                totalSelf += programData[prog]['자기주도'];
+                totalBound += programData[prog]['탈경계'];
+                totalComm += programData[prog]['공동체지향'];
+                selectedCount++;
+            }
+        });
+
+        if (selectedCount === 0) {
+            alert('최소 1개 이상의 프로그램을 선택해 주세요!');
+            return;
+        }
+
+        document.getElementById('result-text').innerText = 
+            `합산 결과: 자기주도 ${totalSelf}점, 탈경계 ${totalBound}점, 공동체지향 ${totalComm}점`;
+
+        if (myChart !== null) {
+            myChart.destroy();
+        }
+
+        const ctx = document.getElementById('myPieChart').getContext('2d');
+        myChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['자기주도', '탈경계', '공동체지향'],
+                datasets: [{
+                    data: [totalSelf, totalBound, totalComm],
+                    backgroundColor: [
+                        'rgba(54, 162, 235, 0.8)', // 파란색
+                        'rgba(255, 206, 86, 0.8)', // 노란색
+                        'rgba(75, 192, 192, 0.8)'  // 민트색
+                    ],
+                    borderColor: ['#fff', '#fff', '#fff'],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    // 퍼센트 표시 설정 부분
+                    datalabels: {
+                        color: '#fff',
+                        font: {
+                            weight: 'bold',
+                            size: 16
+                        },
+                        formatter: (value, ctx) => {
+                            // 전체 합계 계산
+                            let sum = 0;
+                            let dataArr = ctx.chart.data.datasets[0].data;
+                            dataArr.forEach(data => { sum += data; });
+                            
+                            // 값이 0인 조각은 글자 숨기기
+                            if (value === 0) return '';
+                            
+                            // 퍼센트 계산 (소수점 1자리까지)
+                            let percentage = (value * 100 / sum).toFixed(1) + "%";
+                            return percentage;
+                        }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
